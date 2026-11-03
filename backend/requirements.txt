@@ -1,0 +1,15 @@
+# 后端依赖（已在 Python 3.13 + .venv 实测通过）
+fastapi>=0.115
+uvicorn>=0.30
+websockets>=12          # uvicorn 的 WebSocket 协议支持（缺了它 /ws/process 会 404）
+python-dotenv>=1.0
+mediapipe>=0.10.14      # Python 3.12/3.13 会解析到 1.x，tasks API 兼容
+ultralytics>=8.3        # 会自动拉 torch；GPU 版请先按下述命令安装
+pymysql>=1.1
+python-multipart>=0.0.9
+opencv-python>=4.10
+numpy>=1.26
+pydantic>=2.9
+# GPU 加速（可选，先于 ultralytics 安装）:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+# 旧版列出的 dashscope SDK 实际未被 import（走 requests 兼容模式），已移除

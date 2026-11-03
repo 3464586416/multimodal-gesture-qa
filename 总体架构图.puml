@@ -1,0 +1,78 @@
+@startuml 总体架构图
+' ====== 手势指示多模态问答系统 · 总体架构 ======
+' 渲染：VS Code PlantUML 插件 Alt+D / plantuml 总体架构图.puml
+' smetana = PlantUML 自带纯Java布局引擎，无需安装 Graphviz
+!pragma layout smetana
+skinparam backgroundColor #FDFDFD
+skinparam defaultFontName "Microsoft YaHei"
+skinparam dpi 100
+skinparam componentStyle rectangle
+skinparam shadowing false
+skinparam roundCorner 10
+skinparam ArrowColor #555555
+skinparam ArrowFontSize 9
+skinparam package {
+  BackgroundColor<<fe>> #FFF7E8
+  BorderColor<<fe>> #D97706
+  BackgroundColor<<be>> #E9F6EE
+  BorderColor<<be>> #16A34A
+  BackgroundColor<<dv>> #EFF6FF
+  BorderColor<<dv>> #2F6FE0
+}
+skinparam database { BackgroundColor #F3E8FF  BorderColor #8B5CF6 }
+skinparam cloud { BackgroundColor #FFE4E6  BorderColor #E11D48 }
+
+package "输入设备" <<dv>> {
+  [摄像头 / 视频文件] as SRC
+  [PC麦克风] as MIC1
+  [手机视频流\n(MJPEG)] as PV
+  [手机音频流\n(WAV)] as PA
+}
+
+package "PyQt5 前端  frontend/" <<fe>> {
+  [MainWindow\n界面·历史·语音控制] as MW
+  [CameraThread\n采集·WS通信] as CT
+  [MjpegSource\n扫帧拉流] as MJ
+  [MicRecorder /\nPhoneMicRecorder] as REC
+  [overlay\n可视化叠加] as OV
+}
+
+package "FastAPI 后端  backend/" <<be>> {
+  [app.py\nlifespan·单槽背压\n/ws /qa /asr /history] as API
+  [GestureDetector\nMediaPipe手部21点] as GD
+  [ObjectDetector\nYOLOv8物品检测] as OD
+  [geometry纯函数\n指向判定·锥域匹配\n坐标换算] as GEO
+  [LLMClient\nSSE流式封装] as LC
+  [Database\n锁+ping重连] as DB
+  folder "uploads/ 截图" as UP
+}
+
+database "MySQL gesture_qa\nhistory·detected_objects" as T
+
+cloud "阿里云百炼\nQwen3.5-omni-plus\n(OpenAI兼容API)" as OMNI
+
+SRC --> CT : cv2读帧
+PV ..> MJ : HTTP流(直连/ADB)
+MJ --> CT : BGR帧
+MW -> CT
+MW -> REC
+MIC1 --> REC : PCM
+PA ..> REC : WAV
+CT <-> API : WebSocket\nJPEG帧/JSON结果
+API -> OV : 经CT绘制
+CT -> OV
+API -> GD : 处理帧
+API -> OD : 处理帧
+GD -> GEO
+OD -> GEO
+API -> LC : 问答/转写
+LC <-> OMNI : HTTPS流式
+API -> DB : 落库/查询
+DB -> T
+API -> UP : 截图持久化
+T ..> MW : 历史回看
+
+note bottom of GEO : 零依赖纯函数 -> 54项离线单测
+note left of API : 坐标统一换算回原始帧
+
+@enduml
